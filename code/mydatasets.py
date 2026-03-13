@@ -56,8 +56,8 @@ def calculate_num_features(seqs):
 		for visit in patient:
 			for dx_code in visit:
 				if dx_code > max_code:
-					max_code = dx_code + 1
-	return max_code 
+					max_code = dx_code 
+	return max_code + 1  # since feature IDs start from 0
 
 
 
@@ -78,8 +78,6 @@ class VisitSequenceWithLabelDataset(Dataset):
 		# TODO: Complete this constructor to make self.seqs as a List of which each element represent visits of a patient
 		# TODO: by Numpy matrix where i-th row represents i-th visit and j-th column represent the feature ID j.
 		# TODO: You can use Sparse matrix type for memory efficiency if you want.
-		# self.seqs = [i for i in range(len(labels))]  # replace this with your implementation.
-
 		# Build a list of sparse matrices, one per patient.
 		# Each matrix: rows = visits, cols = feature IDs (num_features wide).
 		self.seqs = []
@@ -126,35 +124,23 @@ def visit_collate_fn(batch):
 
 	# Unzip batch into sequences and labels
 	seqs, labels = zip(*batch)
-
-	# Get lengths (number of visits) for each patient
 	lengths = [seq.shape[0] for seq in seqs]
 
-	# Sort by length descending (required for pack_padded_sequence)
 	sorted_indices = sorted(range(len(lengths)), key=lambda i: lengths[i], reverse=True)
-	seqs    = [seqs[i]    for i in sorted_indices]
-	labels  = [labels[i]  for i in sorted_indices]
+	seqs    = [seqs[i]   for i in sorted_indices]
+	labels  = [labels[i] for i in sorted_indices]
 	lengths = [lengths[i] for i in sorted_indices]
 
-	# Build the padded 3-D tensor: (batch_size, max_length, num_features)
 	batch_size   = len(seqs)
-	max_length   = lengths[0]                      # largest after sorting
+	max_length   = lengths[0]
 	num_features = seqs[0].shape[1]
 
 	seqs_tensor = torch.zeros(batch_size, max_length, num_features, dtype=torch.float32)
-
 	for i, seq in enumerate(seqs):
-		# Convert sparse matrix to dense numpy array, then copy into tensor
 		dense = seq.toarray() if sparse.issparse(seq) else seq
-		num_visits = dense.shape[0]
-		seqs_tensor[i, :num_visits, :] = torch.FloatTensor(dense)
+		seqs_tensor[i, :dense.shape[0], :] = torch.FloatTensor(dense)
 
 	lengths_tensor = torch.LongTensor(lengths)
 	labels_tensor  = torch.LongTensor(labels)
-
-
-	seqs_tensor = torch.FloatTensor()
-	lengths_tensor = torch.LongTensor()
-	labels_tensor = torch.LongTensor()
 
 	return (seqs_tensor, lengths_tensor), labels_tensor

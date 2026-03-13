@@ -23,9 +23,12 @@ def convert_icd9(icd9_object):
 
 	## ============================== ##
 	# Extracting only alphanumeric characters before the decimal point, max 4
-	icd9_str = icd9_str.split('.')[0]  # take everything before decimal if present
-	converted = ''.join(c for c in icd9_str if c.isalnum())[:4]
-	converted = icd9_str
+	icd9_str = icd9_str.split('.')[0]
+	
+	if icd9_str.startswith('E'):
+		converted = ''.join(c for c in icd9_str if c.isalnum())[:4]
+	else:
+		converted = ''.join(c for c in icd9_str if c.isalnum())[:3]
 
 	return converted
 

@@ -22,10 +22,10 @@ PATH_TEST_IDS = "../data/mortality/processed/mortality.ids.test"
 PATH_OUTPUT = "../output/mortality/"
 os.makedirs(PATH_OUTPUT, exist_ok=True)
 
-NUM_EPOCHS = 1
+NUM_EPOCHS = 30
 BATCH_SIZE = 32
 USE_CUDA = False  # Set 'True' if you want to use GPU
-NUM_WORKERS = 0
+NUM_WORKERS = 4
 
 device = torch.device("cuda" if torch.cuda.is_available() and USE_CUDA else "cpu")
 torch.manual_seed(1)
@@ -35,14 +35,29 @@ if device.type == "cuda":
 
 # Data loading
 print('===> Loading entire datasets')
+
 train_seqs = pickle.load(open(PATH_TRAIN_SEQS, 'rb'))
 train_labels = pickle.load(open(PATH_TRAIN_LABELS, 'rb'))
+
+
+# ##
+# # DEBUG
+# print(f"num patients: {len(train_seqs)}")
+# print(f"type of train_seqs[0]: {type(train_seqs[0])}")
+# print(f"train_seqs[0]: {train_seqs[0]}")
+# print(f"type of train_seqs[0][0]: {type(train_seqs[0][0])}")
+# print(f"train_seqs[0][0]: {train_seqs[0][0]}")
+
+# ##
+
+
 valid_seqs = pickle.load(open(PATH_VALID_SEQS, 'rb'))
 valid_labels = pickle.load(open(PATH_VALID_LABELS, 'rb'))
 test_seqs = pickle.load(open(PATH_TEST_SEQS, 'rb'))
 test_labels = pickle.load(open(PATH_TEST_LABELS, 'rb'))
 
 num_features = calculate_num_features(train_seqs)
+# print(f"num_features: {num_features}")
 
 train_dataset = VisitSequenceWithLabelDataset(train_seqs, train_labels, num_features)
 valid_dataset = VisitSequenceWithLabelDataset(valid_seqs, valid_labels, num_features)
@@ -52,6 +67,8 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=
 valid_loader = DataLoader(dataset=valid_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=visit_collate_fn, num_workers=NUM_WORKERS)
 # batch_size for the test set should be 1 to avoid sorting each mini-batch which breaks the connection with patient IDs
 test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False, collate_fn=visit_collate_fn, num_workers=NUM_WORKERS)
+
+
 
 model = MyVariableRNN(num_features)
 criterion = nn.CrossEntropyLoss()
@@ -81,6 +98,24 @@ for epoch in range(NUM_EPOCHS):
 best_model = torch.load(os.path.join(PATH_OUTPUT, "MyVariableRNN.pth"))
 # TODO: For your report, try to make plots similar to those in the previous task.
 # TODO: You may use the validation set in case you cannot use the test set.
+## ==================================== ##
+
+
+# test_loss, test_accuracy, test_results = evaluate(best_model, device, test_loader, criterion)
+
+# class_names = ['Survived', 'Deceased']
+# plot_confusion_matrix(test_results, class_names)
+
+
+
+best_val_loss, best_val_acc, val_results = evaluate(best_model, device, valid_loader, criterion)
+
+class_names = ['Survived', 'Deceased']
+plot_confusion_matrix(val_results, class_names)
+
+
+
+
 
 
 # TODO: Complete predict_mortality
@@ -88,7 +123,17 @@ def predict_mortality(model, device, data_loader):
 	model.eval()
 	# TODO: Evaluate the data (from data_loader) using model,
 	# TODO: return a List of probabilities
-	probas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+	# probas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+	probas = []
+	with torch.no_grad():
+		for (input, lengths), _ in data_loader:
+			if isinstance(input, torch.Tensor):
+				input = input.to(device)
+			lengths = lengths.to(device)
+
+			output = model((input, lengths))           # (N, 2) raw logits
+			prob = torch.softmax(output, dim=1)[:, 1] # probability of class 1 (mortality)
+			probas.extend(prob.cpu().numpy().tolist())
 	return probas
 
 
