@@ -103,7 +103,7 @@ def predict_mortality(model, device, data_loader):
 	model.eval()
 	# TODO: Evaluate the data (from data_loader) using model,
 	# TODO: return a List of probabilities
-
+	# probas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 	probas = []
 	with torch.no_grad():
 		for (input, lengths), _ in data_loader:
@@ -111,8 +111,8 @@ def predict_mortality(model, device, data_loader):
 				input = input.to(device)
 			lengths = lengths.to(device)
 
-			output = model((input, lengths))           
-			prob = torch.softmax(output, dim=1)[:, 1]
+			output = model((input, lengths))           # (N, 2) raw logits
+			prob = torch.softmax(output, dim=1)[:, 1] # probability of class 1 (mortality)
 			probas.extend(prob.cpu().numpy().tolist())
 	return probas
 

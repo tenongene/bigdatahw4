@@ -102,35 +102,73 @@ class MyVariableRNN(nn.Module):
 		# You may use the input argument 'dim_input', which is basically the number of features
   
   ## =================================##
-		self.fc1  = nn.Linear(dim_input, 64)
+		self.fc1  = nn.Linear(dim_input, 32)
 		self.tanh = nn.Tanh()
-		self.drop = nn.Dropout(0.3)
-		# 2-layer bidirectional GRU
-		self.gru  = nn.GRU(
-			input_size=64,
-			hidden_size=32,
-			num_layers=2,
-			batch_first=True,
-			dropout=0.3,
-			bidirectional=True
-		)
-		# bidirectional doubles output size: 32*2=64
-		self.fc2  = nn.Linear(64, 2)
+		self.gru  = nn.GRU(input_size=32, hidden_size=16, batch_first=True)
+		self.fc2  = nn.Linear(16, 2)
 
 	def forward(self, input_tuple):
+		# HINT: Following two methods might be useful
+		# 'pack_padded_sequence' and 'pad_packed_sequence' from torch.nn.utils.rnn
+
 		seqs, lengths = input_tuple
-
-		# Projecting to dense embedding
-		x = self.drop(self.tanh(self.fc1(seqs)))     
-
+  
+  ## =======+==========================##
+  # Project to dense embedding
+		x = self.tanh(self.fc1(seqs))          
+		# Packing to skip padded time steps in GRU
 		x = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=True)
 		out, _ = self.gru(x)
-		out, _ = pad_packed_sequence(out, batch_first=True)  
-
-		# Gathering last valid hidden state per patient
+		out, _ = pad_packed_sequence(out, batch_first=True) 
+ 
+		# Gathering the last valid hidden state for each patient using their true length
 		idx = (lengths - 1).view(-1, 1, 1).expand(-1, 1, out.size(2))
-		out = out.gather(1, idx).squeeze(1)          
+		out = out.gather(1, idx).squeeze(1)     
+ 
+		out = self.fc2(out)   
+  
+		return out
 
-		seqs = self.fc2(out)                          
+		# return seqs
+  
+  
+  
 
-		return seqs
+# class MyVariableRNN(nn.Module):
+# 	def __init__(self, dim_input):
+# 		super(MyVariableRNN, self).__init__()
+# 		# You may use the input argument 'dim_input', which is basically the number of features
+  
+#   ## =================================##
+# 		self.fc1  = nn.Linear(dim_input, 64)
+# 		self.tanh = nn.Tanh()
+# 		self.drop = nn.Dropout(0.3)
+# 		# 2-layer bidirectional GRU
+# 		self.gru  = nn.GRU(
+# 			input_size=64,
+# 			hidden_size=32,
+# 			num_layers=2,
+# 			batch_first=True,
+# 			dropout=0.3,
+# 			bidirectional=True
+# 		)
+# 		# bidirectional doubles output size: 32*2=64
+# 		self.fc2  = nn.Linear(64, 2)
+
+# 	def forward(self, input_tuple):
+# 		seqs, lengths = input_tuple
+
+# 		# Projecting to dense embedding
+# 		x = self.drop(self.tanh(self.fc1(seqs)))     
+
+# 		x = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=True)
+# 		out, _ = self.gru(x)
+# 		out, _ = pad_packed_sequence(out, batch_first=True)  
+
+# 		# Gathering last valid hidden state per patient
+# 		idx = (lengths - 1).view(-1, 1, 1).expand(-1, 1, out.size(2))
+# 		out = out.gather(1, idx).squeeze(1)          
+
+# 		seqs = self.fc2(out)                          
+
+# 		return seqs

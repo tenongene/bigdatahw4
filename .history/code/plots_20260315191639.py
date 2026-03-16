@@ -33,7 +33,7 @@ def plot_learning_curves(train_losses, valid_losses, train_accuracies, valid_acc
 	ax2.legend()
 
 	plt.tight_layout()
-	plt.savefig('learning_curves_ModifiedVariableRNN.png', dpi=150)
+	plt.savefig('learning_curves_rnn_tweak.png', dpi=150)
 	plt.show()
 
 
@@ -77,6 +77,6 @@ def plot_confusion_matrix(results, class_names):
 	ax.set_xlabel('Predicted')
 
 	plt.tight_layout()
-	plt.savefig('confusion_matrix_ModifiedVariableRnn.png', dpi=150)
+	plt.savefig('confusion_matrix_rnn_tweak.png', dpi=150)
 	plt.show()
 

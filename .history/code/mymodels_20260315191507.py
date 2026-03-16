@@ -120,17 +120,18 @@ class MyVariableRNN(nn.Module):
 	def forward(self, input_tuple):
 		seqs, lengths = input_tuple
 
-		# Projecting to dense embedding
-		x = self.drop(self.tanh(self.fc1(seqs)))     
+		# Project to dense embedding
+		x = self.drop(self.tanh(self.fc1(seqs)))     # (N, max_visits, 64)
 
+		# Pack → GRU → unpack
 		x = pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=True)
 		out, _ = self.gru(x)
-		out, _ = pad_packed_sequence(out, batch_first=True)  
+		out, _ = pad_packed_sequence(out, batch_first=True)  # (N, max_visits, 64)
 
-		# Gathering last valid hidden state per patient
+		# Gather last valid hidden state per patient
 		idx = (lengths - 1).view(-1, 1, 1).expand(-1, 1, out.size(2))
-		out = out.gather(1, idx).squeeze(1)          
+		out = out.gather(1, idx).squeeze(1)          # (N, 64)
 
-		seqs = self.fc2(out)                          
+		seqs = self.fc2(out)                          # (N, 2)
 
 		return seqs
